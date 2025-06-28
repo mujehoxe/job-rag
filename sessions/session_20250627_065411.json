@@ -1,0 +1,28 @@
+{
+  "query": "python rag_search.py",
+  "response": "### Contact Information\n\n#### Social Media Links\n- GitHub: https://github.com/RUC-NLPIR/FlashRAG\n\n#### LinkedIn Profiles\n- No LinkedIn profiles found.\n\n#### Phone Numbers\n- No phone numbers found.\n\n#### Email Addresses\n- No email addresses found.\n\n#### Other Contact Information\n- No other contact information found.\n\n### Additional Information\n\n- The GitHub repository for FlashRAG: https://github.com/RUC-NLPIR/FlashRAG\n- The repository has 2.5k stars, 18 watchers, and 214 forks.\n- The repository is licensed under the MIT license.\n- The repository has 22 contributors and is written in Python (100.0%).",
+  "timestamp": "20250627_065411",
+  "documents": [
+    {
+      "title": "\u26a1FlashRAG: A Python Toolkit for Efficient RAG Research (Chunk 20)",
+      "url": "https://github.com/RUC-NLPIR/FlashRAG",
+      "snippet": "FlashRAG is a Python toolkit for the reproduction and development of Retrieval Augmented Generation (RAG) research. Our toolkit includes 36 pre-processed benchmark RAG datasets and 17 state-of-the-art RAG algorithms.",
+      "relevance_score": 1.6,
+      "content_preview": "If the retrieval model supports the sentence transformers library, you can use the following code to build the index (without considering the pooling method).\npython -m flashrag.retriever.index_builder \\\n  --retrieval_method e5 \\\n  --model_path /model/e5-base-v2/ \\\n  --corpus_path indexes/sample_corpus.jsonl \\\n  --save_dir indexes/ \\\n  --use_fp16 \\\n  --max_length 512 \\\n  --batch_size 256 \\\n  --pooling_method mean \\\n  --sentence_transformer \\\n  --faiss_type Flat \nFor Sparse Retrieval Methods (BM25)\nIf building a bm25 index, there is no need to specify model_path.\nBuilding Index with BM25s\npython -m flashrag.retriever.index_builder \\\n  --retrieval_method bm25 \\\n  --corpus_path indexes/sample_corpus.jsonl \\\n  --bm25_backend bm25s \\\n  --save_dir indexes/ \nBuilding Index with Pyserini\npython -m flashrag.retriever.index_builder \\\n  --retrieval_method bm25 \\\n  --corpus_path indexes/sample_corpus.jsonl \\\n  --bm25_backend pyserini \\\n  --save_dir indexes/ \nUsing the ready-made pipeline"
+    },
+    {
+      "title": "RAG chat app with your data (Python) - Code Samples (Chunk 10)",
+      "url": "https://learn.microsoft.com/en-us/samples/azure-samples/azure-search-openai-demo/azure-search-openai-demo/",
+      "snippet": "This solution creates a ChatGPT-like frontend experience over your own documents using RAG (Retrieval Augmented Generation). It uses Azure OpenAI Service to access GPT models, and Azure AI Search for data indexing and retrieval.",
+      "relevance_score": 1.4000000000000001,
+      "content_preview": "Start Docker Desktop (install it if not already installed)\n\nOpen the project:\n\n\nIn the VS Code window that opens, once the project files show up (this may take several minutes), open a terminal window.\n\n\nLocal environment\n\nInstall the required tools:\n\nAzure Developer CLI\nPython 3.9, 3.10, or 3.11\n\nImportant: Python and the pip package manager must be in the path in Windows for the setup scripts to work.\nImportant: Ensure you can run python --version from console. On Ubuntu, you might need to run sudo apt install python-is-python3 to link python to python3.\n\n\nNode.js 20+\nGit\nPowershell 7+ (pwsh) - For Windows users only.\n\nImportant: Ensure you can run pwsh.exe from a PowerShell terminal. If this fails, you likely need to upgrade PowerShell.\n\n\n\n\nCreate a new folder and switch to it in the terminal.\n\nRun this command to download the project code:\nazd init -t azure-search-openai-demo\n\nNote that this command will initialize a git repository, so you do not need to clone this repository."
+    },
+    {
+      "title": "\u26a1FlashRAG: A Python Toolkit for Efficient RAG Research (Chunk 42)",
+      "url": "https://github.com/RUC-NLPIR/FlashRAG",
+      "snippet": "FlashRAG is a Python toolkit for the reproduction and development of Retrieval Augmented Generation (RAG) research. Our toolkit includes 36 pre-processed benchmark RAG datasets and 17 state-of-the-art RAG algorithms.",
+      "relevance_score": 1.4,
+      "content_preview": "About\n\n        \u00e2\u0161\u00a1FlashRAG: A Python Toolkit for Efficient RAG Research (WWW2025 Resource)\n      \n\n\n\n\n\narxiv.org/abs/2405.13576\n\n\nTopics\n\n\n\n  benchmark\n\n\n  datasets\n\n\n  large-language-models\n\n\n  retrieval-augmented-generation\n\n\n\nResources\n\n\n\n\n\n        Readme\n \nLicense\n\n\n\n\n\n     MIT license\n    \n\n\n\n\n\n\n        Uh oh!\n\n There was an error while loading. Please reload this page.\n\n \n \n\n\n\n\n\nActivity \n\n\n\n\nCustom properties \nStars\n\n\n\n\n2.5k\n      stars \nWatchers\n\n\n\n\n18\n      watching \nForks\n\n\n\n\n214\n      forks \n\n\n          Report repository\n \n\n\n\n\n\n\nReleases\n      6\n\n\n\n\n\n\nv0.2.0 Support multimodal RAG\n\n          Latest\n \nMar 10, 2025\n\n \n+ 5 releases\n\n\n\n\n\nPackages\n      0\n\n        No packages published \n\n\n\n\n\n\n\n\n\n\n        Uh oh!\n\n There was an error while loading. Please reload this page.\n\n \n \n\n\n\n\n\n\nContributors\n      22\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n+ 8 contributors\n\n\n\n\nLanguages\n\n\n\n\n\n\n\n\n\n\nPython\n100.0%\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nFooter"
+    }
+  ]
+}
