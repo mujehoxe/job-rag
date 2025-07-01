@@ -8,8 +8,8 @@ import json
 from typing import Dict, List
 
 import g4f
-import numpy as np
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from .keyword_extractor import KeywordExtractor
@@ -17,8 +17,9 @@ from search_utils import get_enhanced_search_results, SearchResultProcessor
 from contact_api.utils import ContentExtractor
 
 # Default configuration
-MAX_SEARCH_ROUNDS = int(os.getenv("MAX_SEARCH_ROUNDS", "3"))
-MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "10"))
+# Increased max rounds to allow for deeper investigation
+MAX_SEARCH_ROUNDS = int(os.getenv("MAX_SEARCH_ROUNDS", "5"))
+MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "5")) # Reduced for more focused rounds
 SEARCH_TIMEOUT = int(os.getenv("SEARCH_TIMEOUT", "15"))
 MIN_RELEVANCE_SCORE = float(os.getenv("MIN_RELEVANCE_SCORE", "0.2"))
 
@@ -30,7 +31,9 @@ text_splitter = None
 sentence_transformer = None
 
 class StrategicSearch:
-    """Class to handle strategic, iterative search with analysis between rounds"""
+    """
+    Class to handle a strategic, iterative search process driven by AI analysis.
+    """
 
     def __init__(
         self,
@@ -45,532 +48,244 @@ class StrategicSearch:
         self.timeout = timeout
         self.min_relevance_score = min_relevance_score
         self.keyword_extractor = KeywordExtractor()
-
-        # Store context from search rounds
         self.search_rounds_context = []
+        # Initialize the content extractor
+        self.content_extractor = ContentExtractor()
 
     def strategic_search(self, query: str) -> List[Dict[str, str]]:
         """
-        Perform a strategic, iterative search with analysis between rounds
-
-        Args:
-            query: User query
-
-        Returns:
-            List of relevant documents
+        Perform a strategic, iterative search with AI analysis between rounds.
         """
         console.print(
             f"[bold]Search configuration: {self.max_rounds} rounds, {self.max_results} max results, {self.timeout}s timeout[/]"
         )
+        self.search_rounds_context = [f"Starting strategic search for query: {query}"]
 
-        # Reset search context
-        self.search_rounds_context = []
-        self.search_rounds_context.append(
-            f"Starting strategic search for query: {query}"
-        )
-
-        # Extract initial keywords and entities
         keywords, entities = self.keyword_extractor.extract_keywords(query)
+        self.search_rounds_context.append(f"Extracted keywords: {keywords}, Entities: {entities}")
 
-        if keywords:
-            self.search_rounds_context.append(
-                f"Extracted keywords: {', '.join(keywords)}"
-            )
-        if entities:
-            self.search_rounds_context.append(
-                f"Extracted entities: {', '.join(entities)}"
-            )
-
-        # Initialize variables
         all_documents = []
-        round_count = 0
-        sufficient = False
+        search_queries = self._generate_initial_queries(keywords, entities)
+        if not search_queries:
+            search_queries = [query]  # Fallback to raw query if no keywords found
 
-        # Generate initial search queries
-        search_queries = self._generate_search_queries(query, keywords, entities)
-        self.search_rounds_context.append(
-            f"Generated {len(search_queries)} initial search queries"
-        )
+        console.print(Panel.fit(
+            "\n".join(f"- {q}" for q in search_queries),
+            title="💡 Initial Search Strategy",
+            border_style="green"
+        ))
 
-        # Main search loop
-        while round_count < self.max_rounds and not sufficient:
-            round_count += 1
-            self.search_rounds_context.append(
-                f"\nStarting search round {round_count}/{self.max_rounds}"
-            )
+        for round_count in range(1, self.max_rounds + 1):
+            self.search_rounds_context.append(f"\n--- Starting Search Round {round_count}/{self.max_rounds} ---")
 
-            # Execute search queries for this round
-            round_documents = []
-            for search_query in search_queries[:3]:  # Limit to top 3 queries per round
-                self.search_rounds_context.append(f"Searching for: {search_query}")
-
-                # Search and extract content
-                try:
-                    results = self._search_and_extract(search_query)
-                    if results:
-                        round_documents.extend(results)
-                        self.search_rounds_context.append(
-                            f"Found {len(results)} results"
-                        )
-                    else:
-                        self.search_rounds_context.append("No results found")
-                except Exception as e:
-                    self.search_rounds_context.append(f"Search error: {str(e)}")
-
-            # Add documents from this round to all documents
-            all_documents.extend(round_documents)
-
-            # If we have documents, analyze if we have sufficient information
+            # Execute search for the current set of queries
+            round_documents = self._execute_search_round(search_queries)
             if round_documents:
-                # Display the results from this round
-                self._display_search_results(round_documents)
+                all_documents.extend(round_documents)
+                all_documents = SearchResultProcessor.filter_duplicates(all_documents)  # De-duplicate
 
-                # Check if we have sufficient information
-                sufficient = self._analyze_sufficiency(query, all_documents)
+            # Analyze results and decide next steps
+            analysis = self._analyze_and_refine(query, all_documents, round_count)
+            self.search_rounds_context.append(f"Round {round_count} AI Analysis: {analysis.get('thinking_process', 'N/A')}")
 
-                if sufficient:
-                    self.search_rounds_context.append(
-                        "Analysis: Sufficient information found"
-                    )
-                    break
-                else:
-                    # Generate new search queries based on what we've learned
-                    search_queries = self._refine_search_strategy(query, all_documents)
-                    self.search_rounds_context.append(
-                        f"Analysis: Need more information. Refined search strategy with {len(search_queries)} new queries"
-                    )
-            else:
-                self.search_rounds_context.append("No documents found in this round")
-                # If no documents found, try a different strategy
-                search_queries = self._generate_fallback_queries(query)
-                self.search_rounds_context.append(
-                    f"Generated {len(search_queries)} fallback queries"
-                )
+            # Display the AI's thinking process to the user
+            console.print(Panel(analysis.get('thinking_process', 'No analysis provided.'), title=f"🤖 Round {round_count} Analysis", border_style="blue", expand=False))
 
-        # Final processing of all documents
-        if all_documents:
-            # Rank and filter all documents
-            final_documents = self._rank_and_filter_documents(query, all_documents)
-            self.search_rounds_context.append(
-                f"Final processing: {len(final_documents)} documents after ranking and filtering"
-            )
-            return final_documents
-        else:
-            self.search_rounds_context.append("No relevant documents found after all rounds")
+            if analysis.get('sufficient', False):
+                console.print("[bold green]AI has determined the collected information is sufficient. Ending search.[/]")
+                self.search_rounds_context.append("Information deemed sufficient.")
+                break
+
+            search_queries = analysis.get('new_queries', [])
+            if not search_queries:
+                console.print("[yellow]AI could not generate new queries. Ending search.[/yellow]")
+                self.search_rounds_context.append("Could not generate new queries.")
+                break
+
+            if round_count == self.max_rounds:
+                console.print("[yellow]Max search rounds reached.[/]")
+                self.search_rounds_context.append("Max search rounds reached.")
+
+        if not all_documents:
+            console.print("[bold red]No documents found after all search rounds.[/]")
             return []
 
-    def _generate_search_queries(
-        self, query: str, keywords: List[str], entities: List[str]
-    ) -> List[str]:
-        """
-        Generate search queries based on keywords and entities
+        console.print(f"\nTotal unique documents found: {len(all_documents)}")
+        ranked_docs = self._rank_and_filter_documents(query, all_documents)
+        self._display_search_results(ranked_docs)
+        return ranked_docs
 
-        Args:
-            query: Original user query
-            keywords: List of extracted keywords
-            entities: List of extracted entities
+    def _execute_search_round(self, search_queries: List[str]) -> List[Dict[str, str]]:
+        """Executes a single round of searching for a list of queries."""
+        round_documents = []
+        valid_search_queries = [q for q in search_queries if q.strip()]
 
-        Returns:
-            List of search queries
-        """
-        queries = []
-
-        # Always include original query in first round
-        queries.append(query)
-
-        # Domain-specific queries
-        domain_keywords = [
-            kw for kw in keywords if ".com" in kw or ".org" in kw or ".net" in kw
-        ]
-
-        if domain_keywords:
-            # Enhanced contact information queries
-            for domain in domain_keywords:
-                queries.append(f"{domain} contact information")
-                queries.append(f"{domain} contact us")
-                queries.append(f"{domain} phone number")
-                queries.append(f"{domain} email address")
-                queries.append(f"{domain} headquarters location")
-                queries.append(f"{domain} office address")
-                queries.append(f"{domain} about us")
-                queries.append(f"{domain} team")
-                queries.append(f"{domain} management")
-                queries.append(f"{domain} staff directory")
-
-        # Social media queries
-        social_media_keywords = [
-            kw
-            for kw in keywords
-            if "social media" in kw.lower()
-            or "linkedin" in kw.lower()
-            or "facebook" in kw.lower()
-            or "twitter" in kw.lower()
-            or "instagram" in kw.lower()
-        ]
-
-        if social_media_keywords or domain_keywords:
-            # If we have domain keywords, add social media queries for them
-            for domain in domain_keywords or [query]:
-                queries.append(f"{domain} social media accounts")
-                queries.append(f"{domain} LinkedIn")
-                queries.append(f"{domain} Facebook")
-                queries.append(f"{domain} Twitter")
-                queries.append(f"{domain} Instagram")
-                queries.append(f"{domain} YouTube")
-                queries.append(f"{domain} social profiles")
-
-        # People queries
-        people_keywords = [
-            kw
-            for kw in keywords
-            if "person" in kw.lower()
-            or "people" in kw.lower()
-            or "employee" in kw.lower()
-            or "staff" in kw.lower()
-            or "team" in kw.lower()
-            or "management" in kw.lower()
-            or "leadership" in kw.lower()
-        ]
-
-        if people_keywords or domain_keywords:
-            # If we have domain keywords, add people queries for them
-            for domain in domain_keywords or [query]:
-                queries.append(f"{domain} employees")
-                queries.append(f"{domain} staff")
-                queries.append(f"{domain} team")
-                queries.append(f"{domain} management")
-                queries.append(f"{domain} leadership")
-                queries.append(f"{domain} CEO")
-                queries.append(f"{domain} founder")
-                queries.append(f"{domain} director")
-
-        # Add queries for missing aspects
-        for aspect in entities:
-            queries.append(f"{query} {aspect}")
-
-        # Ensure we have a reasonable number of queries
-        if len(queries) > 10:
-            return queries[:10]  # Limit to 10 queries per round
-        elif len(queries) < 2:
-            # Fallback to keyword combinations if we don't have enough queries
-            keywords = keywords + entities
-            if len(keywords) >= 3:
-                for i in range(
-                    min(len(keywords) - 2, 3)
-                ):  # Add up to 3 keyword combinations
-                    queries.append(f"{keywords[i]} {keywords[i+1]} {keywords[i+2]}")
-
-        return list(set(queries))  # Remove duplicates
+        console.print(f"Executing {len(valid_search_queries)} search queries this round...")
+        for search_query in valid_search_queries[:2]:  # Limit queries per round to reduce rate limits
+            self.search_rounds_context.append(f"Searching for: '{search_query}'")
+            try:
+                results = self._search_and_extract(search_query)
+                if results:
+                    round_documents.extend(results)
+                    self.search_rounds_context.append(f"Found {len(results)} results for '{search_query}'")
+            except Exception as e:
+                self.search_rounds_context.append(f"Search error for '{search_query}': {e}")
+        return round_documents
 
     def _search_and_extract(self, search_query: str) -> List[Dict[str, str]]:
         """
-        Search for documents and extract content
-
-        Args:
-            search_query: Search query
-
-        Returns:
-            List of extracted documents
+        Performs a web search for a single query and extracts content from the results.
         """
-        results = get_enhanced_search_results(
-            search_query,
-            max_results=self.max_results,
-            timeout=self.timeout,
-        )
-
         processed_documents = []
-        for doc in results:
-            url = doc.get("url", "")
-            if url:
-                # Add search query that found this document
-                doc["source_query"] = search_query
+        try:
+            search_results = get_enhanced_search_results(
+                search_query,
+                max_results=self.max_results,
+                timeout=self.timeout,
+            )
 
-                # Try to get content
-                try:
-                    content = ContentExtractor.extract_from_url(
-                        url, timeout=self.timeout
-                    )
-                    if content:
-                        # Create document with extracted content
-                        processed_doc = {
-                            "title": doc.get("title", "No title"),
-                            "content": content,
-                            "url": url,
-                            "snippet": doc.get("snippet", ""),
-                            "source_query": search_query,
-                        }
-
-                        # Split into chunks if text splitter is available
-                        if text_splitter:
-                            try:
-                                chunks = text_splitter.split_text(content)
-                                for i, chunk in enumerate(chunks):
-                                    chunk_doc = processed_doc.copy()
-                                    chunk_doc["content"] = chunk
-                                    chunk_doc["chunk_id"] = i
-                                    chunk_doc["original_title"] = doc.get(
-                                        "title", "No title"
-                                    )
-                                    processed_documents.append(chunk_doc)
-                            except Exception as e:
-                                console.print(
-                                    f"[yellow]Error splitting document: {e}[/]"
-                                )
-                                processed_documents.append(processed_doc)
+            for doc in search_results:
+                url = doc.get("href")
+                if url and not url.endswith(('.pdf', '.xml', '.zip')):
+                    try:
+                        content = self.content_extractor.extract_from_url(url)
+                        if content:
+                            doc["content"] = content
                         else:
-                            processed_documents.append(processed_doc)
-                    else:
-                        # If no content extracted, use the snippet
+                            doc["content"] = doc.get("snippet", "")
+                        processed_documents.append(doc)
+                    except Exception as e:
+                        console.print(f"[yellow]Error extracting content from {url}: {e}[/yellow]")
                         doc["content"] = doc.get("snippet", "")
                         processed_documents.append(doc)
-                except Exception as e:
-                    console.print(
-                        f"[yellow]Error extracting content from {url}: {e}[/]"
-                    )
-                    # Use the document with just the snippet
+                else:
                     doc["content"] = doc.get("snippet", "")
                     processed_documents.append(doc)
-            else:
-                doc["source_query"] = search_query
-                processed_documents.append(doc)
+
+        except Exception as e:
+            console.print(f"[bold red]Error during search for '{search_query}': {e}[/bold red]")
 
         return processed_documents
 
-    def _analyze_sufficiency(self, query: str, documents: List[Dict[str, str]]) -> bool:
-        """
-        Analyze collected documents to determine if we have sufficient information
-
-        Args:
-            query: Original user query
-            documents: Collected documents
-
-        Returns:
-            True if sufficient information is found, False otherwise
-        """
-        if not documents:
-            return False
-
-        try:
-            # Prepare document summaries
-            doc_summaries = []
-            for i, doc in enumerate(documents[:10]):  # Limit to 10 docs for analysis
-                title = doc.get("original_title", "") or doc.get("title", "No title")
-                doc_summaries.append(
-                    f"Doc {i+1}: {title} - {doc.get('snippet', '')[:100]}"
-                )
-
-            doc_context = "\n".join(doc_summaries)
-
-            # Ask AI to analyze if we have sufficient information
-            system_prompt = """
-            You are an information sufficiency analyzer. Based on the original query and the collected documents,
-            determine if we have sufficient information to answer the query.
-            Return ONLY a JSON object with the following structure:
-            {
-                "sufficient": true/false,
-                "missing_aspects": ["list", "of", "missing", "information", "aspects"],
-                "found_aspects": ["list", "of", "found", "information", "aspects"]
-            }
-            Be strict in your assessment - only return sufficient:true if the documents clearly contain the information needed to answer the query.
-            """
-
-            response = g4f.ChatCompletion.create(
-                model=os.getenv("G4F_MODEL", "llama-4-scout"),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": f"Original query: {query}\n\nCollected document summaries:\n{doc_context}\n\nDo we have sufficient information to answer the query?",
-                    },
-                ],
-            )
-
-            # Parse response as JSON
-            try:
-                analysis = json.loads(response)
-                return analysis["sufficient"]
-            except:
-                # Fallback if JSON parsing fails
-                console.print(
-                    "[yellow]Failed to parse AI analysis response. Using fallback analysis.[/]"
-                )
-                # Simple heuristic: if we have more than 10 documents, consider it sufficient
-                return len(documents) >= 10
-
-        except Exception as e:
-            console.print(f"[yellow]Error in analyzing collected information: {e}[/]")
-            # Simple fallback analysis
-            return len(documents) >= 15  # Higher threshold for fallback
-
-    def _refine_search_strategy(
-        self, query: str, documents: List[Dict[str, str]]
-    ) -> List[str]:
-        """
-        Refine the search strategy based on the collected documents
-
-        Args:
-            query: Original user query
-            documents: Collected documents
-
-        Returns:
-            List of refined search queries
-        """
-        if not documents:
+    def _generate_initial_queries(self, keywords: List[str], entities: List[str]) -> List[str]:
+        """Generates a set of initial search queries from keywords and entities."""
+        queries = set()
+        combined = entities + keywords
+        if not combined:
             return []
 
-        # Remove duplicates
-        unique_documents = SearchResultProcessor.filter_duplicates(documents)
+        queries.add(" ".join(combined))
+        for entity in entities:
+            queries.add(f'{entity} contact information')
+            queries.add(f'{entity} social media profiles')
+        for keyword in keywords:
+            if keyword not in entities:
+                queries.add(f'{" ".join(entities)} {keyword}')
 
-        # Rank by relevance
-        if HAS_SENTENCE_TRANSFORMERS and sentence_transformer:
-            try:
-                # Embed the query
-                query_embedding = sentence_transformer.encode(query)
+        return list(queries)
 
-                # Embed the documents
-                for doc in unique_documents:
-                    doc_text = f"{doc.get('title', '')} {doc.get('snippet', '')}"
-                    doc_embedding = sentence_transformer.encode(doc_text)
-
-                    # Calculate similarity
-                    similarity = np.dot(query_embedding, doc_embedding) / (
-                        np.linalg.norm(query_embedding) * np.linalg.norm(doc_embedding)
-                    )
-                    doc["relevance_score"] = float(similarity)
-
-                # Filter by minimum relevance score
-                filtered_docs = [
-                    doc
-                    for doc in unique_documents
-                    if doc.get("relevance_score", 0) > self.min_relevance_score
-                ]
-
-                # Sort by relevance
-                ranked_docs = sorted(
-                    filtered_docs,
-                    key=lambda x: x.get("relevance_score", 0),
-                    reverse=True,
-                )
-
-                # Extract key terms from successful query
-                key_terms = query.replace(query, "").strip().split()
-
-                # Generate new search queries based on key terms and ranked documents
-                new_queries = []
-                for term in key_terms:
-                    new_queries.append(f"{term} {query}")
-                for doc in ranked_docs:
-                    new_queries.append(
-                        f"{doc.get('title', '')} {doc.get('snippet', '')}"
-                    )
-
-                # Ensure we have a reasonable number of queries
-                if len(new_queries) > 10:
-                    return new_queries[:10]  # Limit to 10 queries per round
-                elif len(new_queries) < 2:
-                    # Fallback to keyword combinations if we don't have enough queries
-                    keywords = [doc.get("title", "") for doc in ranked_docs] + key_terms
-                    if len(keywords) >= 3:
-                        for i in range(
-                            min(len(keywords) - 2, 3)
-                        ):  # Add up to 3 keyword combinations
-                            new_queries.append(
-                                f"{keywords[i]} {keywords[i+1]} {keywords[i+2]}"
-                            )
-
-                return list(set(new_queries))  # Remove duplicates
-
-            except Exception as e:
-                console.print(f"[yellow]Error in semantic ranking: {e}[/]")
-                # Fall back to regular ranking
-                ranked_docs = SearchResultProcessor.rank_results(
-                    unique_documents, query
-                )
-                return ranked_docs
-        else:
-            # Fall back to regular ranking
-            ranked_docs = SearchResultProcessor.rank_results(unique_documents, query)
-            return ranked_docs
-
-    def _generate_fallback_queries(self, query: str) -> List[str]:
+    def _analyze_and_refine(self, query: str, documents: List[Dict[str, str]], round_num: int) -> Dict:
         """
-        Generate fallback search queries if no relevant documents are found
-
-        Args:
-            query: Original user query
-
-        Returns:
-            List of fallback search queries
+        Uses an AI to analyze collected documents, check for sufficiency,
+        and generate new queries if needed.
         """
-        # Fallback to keyword combinations if no relevant documents are found
-        keywords, entities = self.keyword_extractor.extract_keywords(query)
-        combined_keywords = keywords + entities
-        if len(combined_keywords) >= 3:
-            return [
-                f"{combined_keywords[i]} {combined_keywords[i+1]} {combined_keywords[i+2]}"
-                for i in range(min(len(combined_keywords) - 2, 3))
-            ]
-        else:
-            return [query]  # Just return the original query as fallback
+        doc_summary = []
+        for i, doc in enumerate(documents[:10], 1):
+            title = doc.get('title', 'No Title')
+            snippet = doc.get('snippet', 'No Snippet')
+            doc_summary.append(f"Doc {i}: {title}\nSnippet: {snippet}")
+
+        summary_text = "\n\n".join(doc_summary) if doc_summary else "No documents found yet."
+
+        system_prompt = (
+            "You are a world-class investigative researcher. Your goal is to uncover social media links, LinkedIn profiles, and phone numbers for a given company or website. "
+            "You will be given a user's query and a history of previous search results. Your task is to generate a list of new, highly-targeted search queries to find the missing information.\n\n"
+            "**Instructions & Rules:**\n"
+            "1. **Analyze the History:** Carefully review the previous search results. Do not repeat queries that have already failed or yielded no new information.\n"
+            "2. **Be Specific:** Create very specific queries. Instead of 'company social media', use 'site:linkedin.com/company/ company-name' or 'company-name twitter'.\n"
+            "3. **Use Advanced Operators:** Employ advanced search operators to narrow your search. Examples:\n"
+            "   - `site:linkedin.com \"milestonehomesre\"` (Search only on LinkedIn)\n"
+            "   - `milestonehomesre.com \"contact us\"` (Look for a contact page)\n"
+            "   - `milestonehomesre.com phone number` (Directly search for a phone number)\n"
+            "   - `inurl:facebook.com \"milestonehomesre\"` (Find a Facebook URL)\n\n"
+            "4. **Iterate and Refine:** If initial broad searches fail, generate more creative and targeted queries. Think about what an expert human researcher would do next.\n"
+            "5. **Format:** Return a list of queries, one per line. Do not add any other text or explanation.\n\n"
+            "Based on the user's query and the history, generate the next set of search queries in the 'new_queries' field of the JSON."
+            "The JSON output MUST contain three keys:\n"
+            "1. \"thinking_process\": (string) Briefly explain your reasoning. Have you found the answer? If not, what information is missing? What is your plan for the next search round?\n"
+            "2. \"sufficient\": (boolean) Set to true if you believe the documents contain enough information to comprehensively answer the user's query, otherwise false.\n"
+            "3. \"new_queries\": (list of strings) If sufficient is false, provide a list of 3-5 new, specific, and diverse search queries to find the missing information. If sufficient is true, provide an empty list."
+        )
+        user_prompt = f"""Original User Query: "{query}"
+
+Round {round_num} Analysis:
+Documents Found So Far:
+---
+{summary_text}
+---
+
+Now, provide your analysis in the required JSON format.
+"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        try:
+            response = g4f.ChatCompletion.create(
+                model=os.getenv("G4F_MODEL", "gpt-3.5-turbo"),
+                messages=messages,
+                timeout=30
+            )
+            # Clean the response to ensure it's valid JSON
+            clean_response = response.strip().replace('`', '')
+            if clean_response.startswith('json'):
+                clean_response = clean_response[4:]
+            
+            analysis = json.loads(clean_response)
+            return analysis
+        except (json.JSONDecodeError, Exception) as e:
+            console.print(f"[bold red]Error parsing AI analysis. Details: {e}[/bold red]")
+            return {"thinking_process": "Could not analyze results due to an error.", "sufficient": False, "new_queries": [query]}
 
     def _rank_and_filter_documents(
         self, query: str, documents: List[Dict[str, str]]
     ) -> List[Dict[str, str]]:
         """
         Rank and filter the collected documents
-
-        Args:
-            query: Original user query
-            documents: All collected documents
-
-        Returns:
-            Ranked and filtered documents
         """
         if not documents:
             return []
 
-        # Remove duplicates
         unique_documents = SearchResultProcessor.filter_duplicates(documents)
 
-        # Rank by relevance
         if HAS_SENTENCE_TRANSFORMERS and sentence_transformer:
             try:
-                # Embed the query
                 query_embedding = sentence_transformer.encode(query)
-
-                # Embed the documents
                 for doc in unique_documents:
                     doc_text = f"{doc.get('title', '')} {doc.get('snippet', '')}"
                     doc_embedding = sentence_transformer.encode(doc_text)
+                    similarity = sentence_transformer.util.cos_sim(query_embedding, doc_embedding)
+                    doc["relevance_score"] = float(similarity[0][0])
 
-                    # Calculate similarity
-                    similarity = np.dot(query_embedding, doc_embedding) / (
-                        np.linalg.norm(query_embedding) * np.linalg.norm(doc_embedding)
-                    )
-                    doc["relevance_score"] = float(similarity)
-
-                # Filter by minimum relevance score
                 filtered_docs = [
                     doc
                     for doc in unique_documents
                     if doc.get("relevance_score", 0) > self.min_relevance_score
                 ]
 
-                # Sort by relevance
                 ranked_docs = sorted(
                     filtered_docs,
                     key=lambda x: x.get("relevance_score", 0),
                     reverse=True,
                 )
-
                 return ranked_docs
 
             except Exception as e:
-                console.print(f"[yellow]Error in semantic ranking: {e}[/]")
-                # Fall back to regular ranking
+                console.print(f"[yellow]Error in semantic ranking: {e}[/yellow]")
                 return SearchResultProcessor.rank_results(unique_documents, query)
         else:
-            # Fall back to regular ranking
             return SearchResultProcessor.rank_results(unique_documents, query)
 
     def _display_search_results(self, documents: List[Dict[str, str]]):
@@ -578,14 +293,13 @@ class StrategicSearch:
         if not documents:
             return
 
-        table = Table(title="Search Results")
+        table = Table(title="Top 5 Search Results")
         table.add_column("Title", style="cyan", no_wrap=True)
         table.add_column("URL", style="magenta")
         table.add_column("Relevance", style="green")
 
-        for doc in documents[:5]:  # Display top 5
-            relevance = f"{doc.get('relevance_score', 0):.2f}" if doc.get('relevance_score') else "N/A"
-            table.add_row(doc.get('title', 'No Title'), doc.get('url', ''), relevance)
+        for doc in documents[:5]:
+            relevance = f"{doc.get('relevance_score', 0):.2f}" if doc.get('relevance_score') is not None else "N/A"
+            table.add_row(doc.get('title', 'No Title'), doc.get('href', ''), relevance)
 
         console.print(table)
-

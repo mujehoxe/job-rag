@@ -1,0 +1,202 @@
+Using pip 25.1.1 from /home/o/RAG/venv/lib/python3.11/site-packages/pip (python 3.11)
+Collecting chromadb
+  Obtaining dependency information for chromadb from https://files.pythonhosted.org/packages/b4/1d/2503541e7255cb433fc395257c75d5c4e9fbbd294b582082690db1b0e311/chromadb-1.0.13-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached chromadb-1.0.13-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.0 kB)
+Collecting build>=1.0.3 (from chromadb)
+  Obtaining dependency information for build>=1.0.3 from https://files.pythonhosted.org/packages/84/c2/80633736cd183ee4a62107413def345f7e6e3c01563dbca1417363cf957e/build-1.2.2.post1-py3-none-any.whl.metadata
+  Using cached build-1.2.2.post1-py3-none-any.whl.metadata (6.5 kB)
+Collecting pydantic>=1.9 (from chromadb)
+  Obtaining dependency information for pydantic>=1.9 from https://files.pythonhosted.org/packages/6a/c0/ec2b1c8712ca690e5d61979dee872603e92b8a32f94cc1b72d53beab008a/pydantic-2.11.7-py3-none-any.whl.metadata
+  Using cached pydantic-2.11.7-py3-none-any.whl.metadata (67 kB)
+Collecting pybase64>=1.4.1 (from chromadb)
+  Obtaining dependency information for pybase64>=1.4.1 from https://files.pythonhosted.org/packages/6f/4b/8d0730e9507026e05a7e34daddcac3d548cf8ce51cda858d033b142fed4d/pybase64-1.4.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached pybase64-1.4.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (8.4 kB)
+Collecting uvicorn>=0.18.3 (from uvicorn[standard]>=0.18.3->chromadb)
+  Obtaining dependency information for uvicorn>=0.18.3 from https://files.pythonhosted.org/packages/d2/e2/dc81b1bd1dcfe91735810265e9d26bc8ec5da45b4c0f6237e286819194c3/uvicorn-0.35.0-py3-none-any.whl.metadata
+  Using cached uvicorn-0.35.0-py3-none-any.whl.metadata (6.5 kB)
+  Link requires a different Python (3.11.0 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/3a/be/650f9c091ef71cb01d735775d554e068752d3ff63d7943b26316dc401749/numpy-1.21.2.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.11.0 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/5f/d6/ad58ded26556eaeaa8c971e08b6466f17c4ac4d786cd3d800e26ce59cc01/numpy-1.21.3.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.11.0 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/fb/48/b0708ebd7718a8933f0d3937513ef8ef2f4f04529f1f66ca86d873043921/numpy-1.21.4.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.11.0 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/c2/a8/a924a09492bdfee8c2ec3094d0a13f2799800b4fdc9c890738aeeb12c72e/numpy-1.21.5.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.11.0 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/45/b7/de7b8e67f2232c26af57c205aaad29fe17754f793404f59c8a730c7a191a/numpy-1.21.6.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+Collecting numpy>=1.22.5 (from chromadb)
+  Obtaining dependency information for numpy>=1.22.5 from https://files.pythonhosted.org/packages/75/c9/9bec03675192077467a9c7c2bdd1f2e922bd01d3a69b15c3a0fdcd8548f6/numpy-2.3.1-cp311-cp311-manylinux_2_28_x86_64.whl.metadata
+  Using cached numpy-2.3.1-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (62 kB)
+Collecting posthog>=2.4.0 (from chromadb)
+  Obtaining dependency information for posthog>=2.4.0 from https://files.pythonhosted.org/packages/ab/ec/7a44533c9fe7046ffcfe48ca0e7472ada2633854f474be633f4afed7b044/posthog-6.0.0-py3-none-any.whl.metadata
+  Using cached posthog-6.0.0-py3-none-any.whl.metadata (6.0 kB)
+Requirement already satisfied: typing-extensions>=4.5.0 in ./venv/lib/python3.11/site-packages (from chromadb) (4.14.0)
+Collecting onnxruntime>=1.14.1 (from chromadb)
+  Obtaining dependency information for onnxruntime>=1.14.1 from https://files.pythonhosted.org/packages/7a/d5/aa83d084d05bc8f6cf8b74b499c77431ffd6b7075c761ec48ec0c161a47f/onnxruntime-1.22.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata
+  Using cached onnxruntime-1.22.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (4.5 kB)
+Collecting opentelemetry-api>=1.2.0 (from chromadb)
+  Obtaining dependency information for opentelemetry-api>=1.2.0 from https://files.pythonhosted.org/packages/a5/3a/2ba85557e8dc024c0842ad22c570418dc02c36cbd1ab4b832a93edf071b8/opentelemetry_api-1.34.1-py3-none-any.whl.metadata
+  Using cached opentelemetry_api-1.34.1-py3-none-any.whl.metadata (1.5 kB)
+Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb)
+  Obtaining dependency information for opentelemetry-exporter-otlp-proto-grpc>=1.2.0 from https://files.pythonhosted.org/packages/b4/42/0a4dd47e7ef54edf670c81fc06a83d68ea42727b82126a1df9dd0477695d/opentelemetry_exporter_otlp_proto_grpc-1.34.1-py3-none-any.whl.metadata
+  Using cached opentelemetry_exporter_otlp_proto_grpc-1.34.1-py3-none-any.whl.metadata (2.4 kB)
+Collecting opentelemetry-sdk>=1.2.0 (from chromadb)
+  Obtaining dependency information for opentelemetry-sdk>=1.2.0 from https://files.pythonhosted.org/packages/07/1b/def4fe6aa73f483cabf4c748f4c25070d5f7604dcc8b52e962983491b29e/opentelemetry_sdk-1.34.1-py3-none-any.whl.metadata
+  Using cached opentelemetry_sdk-1.34.1-py3-none-any.whl.metadata (1.6 kB)
+Collecting tokenizers>=0.13.2 (from chromadb)
+  Obtaining dependency information for tokenizers>=0.13.2 from https://files.pythonhosted.org/packages/c5/74/f41a432a0733f61f3d21b288de6dfa78f7acff309c6f0f323b2833e9189f/tokenizers-0.21.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached tokenizers-0.21.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
+Collecting pypika>=0.48.9 (from chromadb)
+  Using cached PyPika-0.48.9.tar.gz (67 kB)
+  Installing build dependencies: started
+  Running command pip subprocess to install build dependencies
+  Using pip 25.1.1 from /home/o/RAG/venv/lib/python3.11/site-packages/pip (python 3.11)
+  Collecting setuptools>=40.8.0
+    Obtaining dependency information for setuptools>=40.8.0 from https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl.metadata
+    Using cached setuptools-80.9.0-py3-none-any.whl.metadata (6.6 kB)
+  Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+  Installing collected packages: setuptools
+  Successfully installed setuptools-80.9.0
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Running command Getting requirements to build wheel
+  /tmp/pip-build-env-rr4bc7hp/overlay/lib/python3.11/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'test_suite'
+    warnings.warn(msg)
+  /tmp/pip-build-env-rr4bc7hp/overlay/lib/python3.11/site-packages/setuptools/dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+  !!
+
+          ********************************************************************************
+          Please consider removing the following classifiers in favor of a SPDX license expression:
+
+          License :: OSI Approved :: Apache Software License
+
+          See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+          ********************************************************************************
+
+  !!
+    self._finalize_license_expression()
+  running egg_info
+  writing PyPika.egg-info/PKG-INFO
+  writing dependency_links to PyPika.egg-info/dependency_links.txt
+  writing top-level names to PyPika.egg-info/top_level.txt
+  reading manifest file 'PyPika.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  warning: no files found matching 'requirements.txt'
+  adding license file 'LICENSE.txt'
+  writing manifest file 'PyPika.egg-info/SOURCES.txt'
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Running command Preparing metadata (pyproject.toml)
+  /tmp/pip-build-env-rr4bc7hp/overlay/lib/python3.11/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'test_suite'
+    warnings.warn(msg)
+  /tmp/pip-build-env-rr4bc7hp/overlay/lib/python3.11/site-packages/setuptools/dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+  !!
+
+          ********************************************************************************
+          Please consider removing the following classifiers in favor of a SPDX license expression:
+
+          License :: OSI Approved :: Apache Software License
+
+          See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+          ********************************************************************************
+
+  !!
+    self._finalize_license_expression()
+  running dist_info
+  creating /tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info
+  writing /tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info/PKG-INFO
+  writing dependency_links to /tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info/dependency_links.txt
+  writing top-level names to /tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info/top_level.txt
+  writing manifest file '/tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  warning: no files found matching 'requirements.txt'
+  adding license file 'LICENSE.txt'
+  writing manifest file '/tmp/pip-modern-metadata-cq0b6she/PyPika.egg-info/SOURCES.txt'
+  creating '/tmp/pip-modern-metadata-cq0b6she/pypika-0.48.9.dist-info'
+  /tmp/pip-build-env-rr4bc7hp/overlay/lib/python3.11/site-packages/setuptools/_distutils/cmd.py:135: SetuptoolsDeprecationWarning: bdist_wheel.universal is deprecated
+  !!
+
+          ********************************************************************************
+          With Python 2.7 end-of-life, support for building universal wheels
+          (i.e., wheels that support both Python 2 and Python 3)
+          is being obviated.
+          Please discontinue using this option, or if you still need it,
+          file an issue with pypa/setuptools describing your use case.
+
+          By 2025-Aug-30, you need to update your project and remove deprecated calls
+          or your builds will no longer be supported.
+          ********************************************************************************
+
+  !!
+    self.finalize_options()
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting tqdm>=4.65.0 (from chromadb)
+  Obtaining dependency information for tqdm>=4.65.0 from https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl.metadata
+  Using cached tqdm-4.67.1-py3-none-any.whl.metadata (57 kB)
+Collecting overrides>=7.3.1 (from chromadb)
+  Obtaining dependency information for overrides>=7.3.1 from https://files.pythonhosted.org/packages/2c/ab/fc8290c6a4c722e5514d80f62b2dc4c4df1a68a41d1364e625c35990fcf3/overrides-7.7.0-py3-none-any.whl.metadata
+  Using cached overrides-7.7.0-py3-none-any.whl.metadata (5.8 kB)
+Collecting importlib-resources (from chromadb)
+  Obtaining dependency information for importlib-resources from https://files.pythonhosted.org/packages/a4/ed/1f1afb2e9e7f38a545d628f864d562a5ae64fe6f7a10e28ffb9b185b4e89/importlib_resources-6.5.2-py3-none-any.whl.metadata
+  Using cached importlib_resources-6.5.2-py3-none-any.whl.metadata (3.9 kB)
+Collecting grpcio>=1.58.0 (from chromadb)
+  Obtaining dependency information for grpcio>=1.58.0 from https://files.pythonhosted.org/packages/0e/64/12d6dc446021684ee1428ea56a3f3712048a18beeadbdefa06e6f8814a6e/grpcio-1.73.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached grpcio-1.73.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (3.8 kB)
+Collecting bcrypt>=4.0.1 (from chromadb)
+  Obtaining dependency information for bcrypt>=4.0.1 from https://files.pythonhosted.org/packages/dc/7f/1e36379e169a7df3a14a1c160a49b7b918600a6008de43ff20d479e6f4b5/bcrypt-4.3.0-cp39-abi3-manylinux_2_34_x86_64.whl.metadata
+  Using cached bcrypt-4.3.0-cp39-abi3-manylinux_2_34_x86_64.whl.metadata (10 kB)
+Collecting typer>=0.9.0 (from chromadb)
+  Obtaining dependency information for typer>=0.9.0 from https://files.pythonhosted.org/packages/76/42/3efaf858001d2c2913de7f354563e3a3a2f0decae3efe98427125a8f441e/typer-0.16.0-py3-none-any.whl.metadata
+  Using cached typer-0.16.0-py3-none-any.whl.metadata (15 kB)
+Collecting kubernetes>=28.1.0 (from chromadb)
+  Obtaining dependency information for kubernetes>=28.1.0 from https://files.pythonhosted.org/packages/89/43/d9bebfc3db7dea6ec80df5cb2aad8d274dd18ec2edd6c4f21f32c237cbbb/kubernetes-33.1.0-py2.py3-none-any.whl.metadata
+  Using cached kubernetes-33.1.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting tenacity>=8.2.3 (from chromadb)
+  Obtaining dependency information for tenacity>=8.2.3 from https://files.pythonhosted.org/packages/e5/30/643397144bfbfec6f6ef821f36f33e57d35946c44a2352d3c9f0ae847619/tenacity-9.1.2-py3-none-any.whl.metadata
+  Using cached tenacity-9.1.2-py3-none-any.whl.metadata (1.2 kB)
+Collecting pyyaml>=6.0.0 (from chromadb)
+  Obtaining dependency information for pyyaml>=6.0.0 from https://files.pythonhosted.org/packages/75/e4/2c27590dfc9992f73aabbeb9241ae20220bd9452df27483b6e56d3975cc5/PyYAML-6.0.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached PyYAML-6.0.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.1 kB)
+Collecting mmh3>=4.0.1 (from chromadb)
+  Obtaining dependency information for mmh3>=4.0.1 from https://files.pythonhosted.org/packages/ac/aa/8bc964067df9262740c95e4cde2d19f149f2224f426654e14199a9e47df6/mmh3-5.1.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached mmh3-5.1.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (16 kB)
+Collecting orjson>=3.9.12 (from chromadb)
+  Obtaining dependency information for orjson>=3.9.12 from https://files.pythonhosted.org/packages/d2/78/ddd3ee7873f2b5f90f016bc04062713d567435c53ecc8783aab3a4d34915/orjson-3.10.18-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Using cached orjson-3.10.18-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (41 kB)
+Collecting httpx>=0.27.0 (from chromadb)
+  Obtaining dependency information for httpx>=0.27.0 from https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl.metadata
+  Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Requirement already satisfied: rich>=10.11.0 in ./venv/lib/python3.11/site-packages (from chromadb) (14.0.0)
+Collecting jsonschema>=4.19.0 (from chromadb)
+  Obtaining dependency information for jsonschema>=4.19.0 from https://files.pythonhosted.org/packages/a2/3d/023389198f69c722d039351050738d6755376c8fd343e91dc493ea485905/jsonschema-4.24.0-py3-none-any.whl.metadata
+  Using cached jsonschema-4.24.0-py3-none-any.whl.metadata (7.8 kB)
+Collecting packaging>=19.1 (from build>=1.0.3->chromadb)
+  Obtaining dependency information for packaging>=19.1 from https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl.metadata
+  Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting pyproject_hooks (from build>=1.0.3->chromadb)
+  Obtaining dependency information for pyproject_hooks from https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl.metadata
+  Using cached pyproject_hooks-1.2.0-py3-none-any.whl.metadata (1.3 kB)
+Collecting anyio (from httpx>=0.27.0->chromadb)
+  Obtaining dependency information for anyio from https://files.pythonhosted.org/packages/a1/ee/48ca1a7c89ffec8b6a0c5d02b89c305671d5ffd8d3c94acf8b8c408575bb/anyio-4.9.0-py3-none-any.whl.metadata
+  Using cached anyio-4.9.0-py3-none-any.whl.metadata (4.7 kB)
+Requirement already satisfied: certifi in ./venv/lib/python3.11/site-packages (from httpx>=0.27.0->chromadb) (2025.6.15)
+Collecting httpcore==1.* (from httpx>=0.27.0->chromadb)
+  Obtaining dependency information for httpcore==1.* from https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl.metadata
+  Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Requirement already satisfied: idna in ./venv/lib/python3.11/site-packages (from httpx>=0.27.0->chromadb) (3.10)
+Collecting h11>=0.16 (from httpcore==1.*->httpx>=0.27.0->chromadb)
+  Obtaining dependency information for h11>=0.16 from https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl.metadata
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Requirement already satisfied: attrs>=22.2.0 in ./venv/lib/python3.11/site-packages (from jsonschema>=4.19.0->chromadb) (25.3.0)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=4.19.0->chromadb)
+  Obtaining dependency information for jsonschema-specifications>=2023.03.6 from https://files.pythonhosted.org/packages/01/0e/b27cdbaccf30b890c40ed1da9fd4a3593a5cf94dae54fb34f8a4b74fcd3f/jsonschema_specifications-2025.4.1-py3-none-any.whl.metadata
+  Using cached jsonschema_specifications-2025.4.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema>=4.19.0->chromadb)
+  Obtaining dependency information for referencing>=0.28.4 from https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl.metadata
+  Using cached referencing-0.36.2-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.7.1 (from jsonschema>=4.19.0->chromadb)
+  Obtaining dependency information for rpds-py>=0.7.1 from https://files.pythonhosted.org/packages/dc/6c/44695c1f035077a017dd472b6a3253553780837af2fac9b6ac25f6a5cb4d/rpds_py-0.25.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata
+  Downloading rpds_py-0.25.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+Collecting six>=1.9.0 (from kubernetes>=28.1.0->chromadb)
+  Obtaining dependency information for six>=1.9.0 from https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl.metadata
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting python-dateutil>=2.5.3 (from kubernetes>=28.1.0->chromadb)
+  Obtaining dependency information for python-dateutil>=2.5.3 from https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+ERROR: Operation cancelled by user

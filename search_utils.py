@@ -7,6 +7,7 @@ import re
 import time
 import random
 import os
+import datetime
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 
@@ -15,58 +16,22 @@ from bs4 import BeautifulSoup
 from rich.console import Console
 from duckduckgo_search import DDGS
 
+# Suppress only the InsecureRequestWarning from urllib3
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 console = Console()
+
+# --- Proxy Cache ---
+PROXY_CACHE: List[str] = []
+PROXY_CACHE_EXPIRATION: Optional[datetime.datetime] = None
+PROXY_CACHE_TTL_MINUTES = 10
+# -------------------
 
 # Define constants to avoid backslash in f-string expressions
 NEWLINE_SEP = "\n"
 
-# Free proxy list - use direct IP addresses instead of URLs to proxy services
-FREE_PROXIES = [
-    None,  # No proxy option
-    "socks5://127.0.0.1:9050",  # Tor proxy if available locally
-    "http://localhost:8118",  # Privoxy if available locally
-]
 
-
-class RateLimitHandler:
-    """Handler for rate limiting with exponential backoff and proxy rotation"""
-
-    def __init__(self, max_retries=3, base_delay=2):
-        self.max_retries = max_retries
-        self.base_delay = base_delay
-        self.current_proxy_index = 0
-        self.proxies = FREE_PROXIES
-
-    def get_current_proxy(self):
-        """Get current proxy"""
-        if not self.proxies or self.current_proxy_index >= len(self.proxies):
-            return None
-        return self.proxies[self.current_proxy_index]
-
-    def rotate_proxy(self):
-        """Rotate to next proxy"""
-        self.current_proxy_index = (self.current_proxy_index + 1) % len(self.proxies)
-        current = self.get_current_proxy()
-        console.print(
-            f"[yellow]Rotating to proxy: {current if current else 'No proxy'}[/]"
-        )
-        return current
-
-    def get_proxy_config(self):
-        """Get proxy configuration for requests"""
-        proxy = self.get_current_proxy()
-        if not proxy:
-            return {}
-
-        if proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
-            return {"http": proxy, "https": proxy}
-        else:
-            console.print(f"[yellow]Invalid proxy format: {proxy}, using no proxy[/]")
-            return {}
-
-
-# Initialize rate limit handler
-rate_limit_handler = RateLimitHandler()
 
 
 class SearchResultProcessor:
@@ -123,20 +88,97 @@ class SearchResultProcessor:
         return unique_results
 
 
+def _check_internet_connectivity(timeout: int = 5) -> bool:
+    """Checks for basic internet connectivity by connecting to a reliable IP."""
+    try:
+        # Using a reliable IP address to bypass potential DNS resolution issues.
+        requests.head("https://8.8.8.8", timeout=timeout, verify=False) # Added verify=False for flexibility
+        return True
+    except (requests.ConnectionError, requests.Timeout):
+        return False
+
+
+def _get_free_proxy() -> Optional[str]:
+    """
+    Fetches a random HTTPS proxy from a list of sources, with caching.
+    """
+    global PROXY_CACHE, PROXY_CACHE_EXPIRATION
+
+    # 1. Check cache first
+    if PROXY_CACHE and PROXY_CACHE_EXPIRATION and datetime.datetime.now() < PROXY_CACHE_EXPIRATION:
+        console.print(f"[grey50]Using cached proxy...[/grey50]")
+        return random.choice(PROXY_CACHE)
+
+    # 2. If cache is invalid, fetch from sources
+    console.print("[yellow]Proxy cache expired or empty. Fetching new proxy list...[/yellow]")
+    proxy_sources = [
+        "https://free-proxy-list.net/",
+        "https://sslproxies.org/",
+        "https://www.geonode.com/free-proxy-list"
+    ]
+    all_proxies = []
+
+    for url in proxy_sources:
+        try:
+            console.print(f"[grey50]Trying source: {url}...[/grey50]")
+            response = requests.get(url, timeout=25)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            
+            # Generic parsing for tables with IP and Port
+            for row in soup.find_all("tr"):
+                cells = row.find_all("td")
+                if len(cells) > 6 and 'yes' in cells[6].text.lower(): # HTTPS enabled
+                    ip = cells[0].text.strip()
+                    port = cells[1].text.strip()
+                    if ip and port.isdigit():
+                        all_proxies.append(f"http://{ip}:{port}")
+            
+            if all_proxies:
+                console.print(f"[green]Successfully fetched {len(all_proxies)} proxies from {url}[/green]")
+                break # Stop if we get a good list
+
+        except Exception as e:
+            console.print(f"[red]Failed to fetch from {url}: {e}[/red]")
+            continue
+
+    # 3. Update cache if proxies were found
+    if all_proxies:
+        PROXY_CACHE = all_proxies
+        PROXY_CACHE_EXPIRATION = datetime.datetime.now() + datetime.timedelta(minutes=PROXY_CACHE_TTL_MINUTES)
+        console.print(f"[green]Proxy cache updated with {len(PROXY_CACHE)} proxies.[/green]")
+        return random.choice(PROXY_CACHE)
+    
+    console.print("[bold red]Could not fetch any proxies from any source.[/bold red]")
+    return None
+
+
 def get_enhanced_search_results(
     query: str, max_results: int = 10, timeout: int = 10
 ) -> List[Dict[str, str]]:
     """
-    Get enhanced search results from DuckDuckGo with retry logic
+    Get enhanced search results from DuckDuckGo with proxy-based retry logic and network checks.
     """
-    results = []
-    retries = 0
+    if not _check_internet_connectivity():
+        console.print("[bold red]Network Error:[/bold red] Cannot connect to the internet. Please check your connection.")
+        return []
 
-    while retries < rate_limit_handler.max_retries:
+    results: List[Dict[str, str]] = []
+    retries = 0
+    max_retries = 3
+    base_delay = 4
+    proxy = _get_free_proxy()  # Initial proxy
+
+    while retries < max_retries:
+        if not proxy:
+            console.print("[red]No proxy available. Trying without proxy...[/red]")
+
         try:
-            proxies = rate_limit_handler.get_proxy_config()
-            with DDGS(proxies=proxies, timeout=timeout) as search_engine:
-                search_results = search_engine.text(query, max_results=max_results)
+            console.print(f"[grey50]Searching with proxy: {proxy}...[/grey50]" if proxy else "[grey50]Searching directly...[/grey50]")
+            with DDGS(proxy=proxy, timeout=timeout) as search_engine:
+                search_results = search_engine.text(
+                    keywords=query, max_results=max_results
+                )
                 for result in search_results:
                     results.append(
                         {
@@ -145,24 +187,37 @@ def get_enhanced_search_results(
                             "snippet": result.get("body", ""),
                         }
                     )
-            break
-        except Exception as e:
-            retries += 1
-            delay = rate_limit_handler.base_delay * (2**retries) + random.uniform(0, 1)
-            if "rate" in str(e).lower() or "limit" in str(e).lower() or "202" in str(e):
-                console.print(
-                    f"[yellow]Rate limit hit. Retrying in {delay:.2f}s (Attempt {retries}/{rate_limit_handler.max_retries})[/]"
-                )
-                rate_limit_handler.rotate_proxy()
-            else:
-                console.print(
-                    f"[yellow]Search error: {e}. Retrying in {delay:.2f}s (Attempt {retries}/{rate_limit_handler.max_retries})[/]"
-                )
-            if retries < rate_limit_handler.max_retries:
-                time.sleep(delay)
+            if results:
+                console.print(f"[green]Successfully found {len(results)} results.[/green]")
+                break  # Success
 
-    if not results and retries >= rate_limit_handler.max_retries:
-        console.print("[yellow]All retries failed. Using fallback search method.[/]")
+        except Exception as e:
+            error_msg = str(e).lower()
+            console.print(f"[yellow]Search attempt failed: {error_msg}[/yellow]")
+            
+            # If it's a network error, check connectivity and abort if lost
+            if "timed out" in error_msg or "connection" in error_msg or "network is unreachable" in error_msg:
+                console.print("[yellow]Network error detected. Re-checking internet connectivity...[/yellow]")
+                if not _check_internet_connectivity():
+                    console.print("[bold red]Internet connection lost. Aborting all search attempts.[/bold red]")
+                    return [] # Return immediately, don't even try fallback
+
+        # This logic runs on failure or if no results were found
+        retries += 1
+        if retries >= max_retries:
+            break
+            
+        delay = base_delay * (2**retries) + random.uniform(0, 1)
+        console.print(
+            f"[yellow]Retrying in {delay:.2f}s (Attempt {retries + 1}/{max_retries})...[/]"
+        )
+        
+        # On any failure, get a new proxy. The cache makes this efficient.
+        proxy = _get_free_proxy()
+        time.sleep(delay)
+
+    if not results:
+        console.print("[yellow]Primary search with proxies failed. Using fallback search method.[/yellow]")
         results = _fallback_search(query, max_results)
 
     return results
@@ -170,9 +225,28 @@ def get_enhanced_search_results(
 
 def _fallback_search(query: str, max_results: int = 10) -> List[Dict[str, str]]:
     """
-    Fallback search method when DuckDuckGo fails
+    Fallback search method when DuckDuckGo fails. First, try the official DuckDuckGo Instant Answer API via
+    the `ddg` helper (backend="api") which is far less likely to rate-limit. If that also fails, fall back to
+    basic HTML scraping.
     """
-    results = []
+    results: List[Dict[str, str]] = []
+
+    # 1) Try official DuckDuckGo API via DDGS with backend='api'
+    try:
+        with DDGS(proxy=None, timeout=10) as api_search:
+            api_results = api_search.text(keywords=query, backend="auto", max_results=max_results)
+            if api_results:
+                for item in api_results:
+                    results.append({
+                        "title": item.get("title", ""),
+                        "url": item.get("href", ""),
+                        "snippet": item.get("body", ""),
+                    })
+                return results
+    except Exception as api_err:
+        console.print(f"[yellow]DDG API fallback failed: {api_err}[/]")
+
+    # 2) If API also fails, use lightweight HTML endpoint
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -197,7 +271,7 @@ def _fallback_search(query: str, max_results: int = 10) -> List[Dict[str, str]]:
                     snippet = snippet_elem.text.strip() if snippet_elem else ""
                     results.append({"title": title, "url": url, "snippet": snippet})
     except Exception as e:
-        console.print(f"[red]Fallback search failed: {e}[/]")
+        console.print(f"[red]HTML scraping fallback failed: {e}[/]")
         try:
             console.print("[yellow]Trying alternative search engine...[/]")
             results = [

@@ -4,8 +4,14 @@ RAG Search Tool - A tool to retrieve relevant documents from the internet and us
 """
 
 import os
+import sys
 import json
 import time
+
+# Add project root to the Python path
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_root)
+
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -15,7 +21,6 @@ try:
     HAS_READLINE = True
 except ImportError:
     HAS_READLINE = False
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -88,7 +93,7 @@ def get_input(prompt_text: str) -> str:
             console.print(f"[dim]Could not read history file: {e}[/]")
 
         console.print(prompt_text, end="")
-        user_input = input()
+        user_input = input().replace('\\040', ' ')
 
         try:
             readline.write_history_file(history_file)
@@ -131,4 +136,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]Exiting...[/]")
+        sys.exit(0)
