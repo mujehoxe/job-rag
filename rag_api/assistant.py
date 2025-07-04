@@ -13,20 +13,19 @@ from rich.console import Console
 
 from .strategic_search import StrategicSearch
 
-# Default configuration
-MAX_DOCUMENTS_TO_USE = int(os.getenv("MAX_DOCUMENTS_TO_USE", "5"))
-MAX_SEARCH_ROUNDS = int(os.getenv("MAX_SEARCH_ROUNDS", "3"))
+# Default configuration - Removed MAX_DOCUMENTS_TO_USE limit for better business intelligence
+MAX_SEARCH_ROUNDS = int(os.getenv("MAX_SEARCH_ROUNDS", "8"))  # Increased for thorough investigation
 
 console = Console()
 
 class RAGAssistant:
     """RAG-enhanced AI assistant using g4f"""
 
-    def __init__(self, chroma_collection=None, max_docs=MAX_DOCUMENTS_TO_USE):
+    def __init__(self, chroma_collection=None):
         """Initialize the RAG assistant"""
-        # Use deepseek model with G4F
-        self.model = os.getenv("G4F_MODEL", "deepseek")
-        self.max_docs = max_docs
+        # Use llama-4-scout model with local API
+        self.model = os.getenv("G4F_MODEL", "llama-4-scout")
+        # Removed max_docs limit - use all relevant documents for better business intelligence
         self.searcher = StrategicSearch(max_rounds=MAX_SEARCH_ROUNDS)
 
         # Store search context and thinking process
@@ -36,17 +35,10 @@ class RAGAssistant:
         self.document_collection = chroma_collection
         self.has_chromadb = self.document_collection is not None
 
-        # Use Pollinations AI provider
-        try:
-            self.provider = g4f.Provider.Pollinations
-            console.print(
-                "[green]Using Pollinations AI provider with deepseek model[/]"
-            )
-        except Exception as e:
-            console.print(
-                f"[yellow]Error initializing Pollinations provider: {e}. Will try other providers.[/]"
-            )
-            self.provider = None
+        # Configure for local API endpoint
+        self.api_base = os.getenv("LOCAL_API_BASE", "http://localhost:8080/v1")
+        self.provider = None  # No provider needed for local API
+        console.print(f"[green]Using local API with {self.model} model at {self.api_base}[/]")
 
     def ask(self, query: str) -> Tuple[str, List[Dict[str, Any]]]:
         """
@@ -83,10 +75,9 @@ class RAGAssistant:
         console.print(f"[bold green]Found {len(documents)} relevant documents.[/]")
         self.search_context.append(f"Found {len(documents)} relevant documents.")
 
-        # 3. Limit documents to use
-        documents = documents[: self.max_docs]
+        # 3. Use all relevant documents for better business intelligence
         self.search_context.append(
-            f"Using top {len(documents)} documents for response generation."
+            f"Using all {len(documents)} documents for comprehensive analysis."
         )
 
         # 4. Store documents in vector database if available
@@ -111,18 +102,31 @@ class RAGAssistant:
         """Get response from AI with or without RAG"""
         try:
             system_prompt = (
-                "You are a powerful research assistant. Your task is to analyze the provided documents "
+                "You are a powerful business intelligence research assistant. Your task is to analyze the provided documents "
                 "and answer the user's query based *only* on the information in those documents. "
-                "Extract all relevant facts and contact details. If the documents do not contain the answer, "
-                "state that clearly."
+                "Extract all relevant facts and contact details. ALWAYS cite your sources by including the URL "
+                "where you found specific information. Format citations as [Source: URL]. "
+                "If the documents do not contain the answer, state that clearly."
             )
 
             if documents:
                 doc_texts = []
                 for i, doc in enumerate(documents, 1):
                     title = doc.get("original_title") or doc.get("title", "No Title")
-                    content = doc.get("content", "")[:1500]
-                    doc_text = f"Document {i}: {title}\nContent: {content}"
+                    content = doc.get("content", "")[:2000]  # Increased content length for better analysis
+                    source_url = doc.get("source_url") or doc.get("href") or doc.get("url", "")
+                    
+                    # Include source URL in document text for AI to reference
+                    doc_text = f"Document {i}: {title}\nSource URL: {source_url}\nContent: {content}"
+                    
+                    # Add business relevance indicator if available
+                    if doc.get("business_relevant"):
+                        doc_text += "\n[Business-relevant page detected]"
+                    
+                    # Add sitemap URLs if available for future reference
+                    if doc.get("sitemap_urls"):
+                        doc_text += f"\n[Additional relevant pages found: {', '.join(doc['sitemap_urls'][:3])}]"
+                    
                     doc_texts.append(doc_text)
 
                 all_docs = "\n\n---\n\n".join(doc_texts)
@@ -141,19 +145,34 @@ class RAGAssistant:
                 {"role": "user", "content": user_message},
             ]
 
-            # Generate response
-            if self.provider:
-                response = g4f.ChatCompletion.create(
-                    model=self.model,
-                    messages=messages,
-                    provider=self.provider,
+            # Generate response using local API
+            import requests
+            
+            try:
+                response = requests.post(
+                    f"{self.api_base}/chat/completions",
+                    json={
+                        "model": self.model,
+                        "messages": messages,
+                        "temperature": 0.7,
+                        "max_tokens": 2000
+                    },
+                    timeout=60
                 )
-            else:
-                response = g4f.ChatCompletion.create(
-                    model=self.model, messages=messages
-                )
-
-            return response
+                response.raise_for_status()
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+            except Exception as e:
+                console.print(f"[bold red]Error calling local API: {e}[/bold red]")
+                # Fallback to g4f if local API fails
+                try:
+                    response = g4f.ChatCompletion.create(
+                        model=self.model, messages=messages
+                    )
+                    return response
+                except Exception as g4f_error:
+                    console.print(f"[bold red]G4F fallback also failed: {g4f_error}[/bold red]")
+                    raise e
 
         except Exception as e:
             console.print(f"[bold red]Error in AI response generation: {e}[/]")
@@ -166,6 +185,11 @@ class RAGAssistant:
             return
 
         try:
+            # Check if collection has embedding function
+            if not hasattr(self.document_collection, '_embedding_function') or self.document_collection._embedding_function is None:
+                console.print(f"[yellow]ChromaDB collection has no embedding function, skipping vector storage[/yellow]")
+                return
+                
             # Prepare documents for ChromaDB
             docs_to_store = []
             metadatas = []
@@ -173,26 +197,54 @@ class RAGAssistant:
 
             for doc in documents:
                 # Ensure document has a URL
-                if "url" in doc and doc["url"]:
-                    docs_to_store.append(doc["content"])
+                url = doc.get("url") or doc.get("source_url") or doc.get("href")
+                if url:
+                    docs_to_store.append(doc.get("content", ""))
                     metadatas.append(
                         {
                             "title": doc.get("title", ""),
-                            "url": doc["url"],
+                            "url": url,
                             "snippet": doc.get("snippet", ""),
                         }
                     )
-                    ids.append(doc["url"])  # Use URL as ID
+                    ids.append(url)  # Use URL as ID
 
             # Add to collection if there are documents to store
             if docs_to_store:
-                self.document_collection.add(
-                    documents=docs_to_store, metadatas=metadatas, ids=ids
-                )
-                self.search_context.append(
-                    f"Stored {len(docs_to_store)} documents in vector DB."
-                )
+                # Check for duplicate IDs first
+                try:
+                    existing_ids = set()
+                    try:
+                        existing_data = self.document_collection.get()
+                        existing_ids = set(existing_data.get('ids', []))
+                    except:
+                        pass  # Collection might be empty
+                    
+                    # Filter out existing documents
+                    new_docs = []
+                    new_metadatas = []
+                    new_ids = []
+                    
+                    for doc, metadata, doc_id in zip(docs_to_store, metadatas, ids):
+                        if doc_id not in existing_ids:
+                            new_docs.append(doc)
+                            new_metadatas.append(metadata)
+                            new_ids.append(doc_id)
+                    
+                    if new_docs:
+                        self.document_collection.add(
+                            documents=new_docs, metadatas=new_metadatas, ids=new_ids
+                        )
+                        self.search_context.append(
+                            f"Stored {len(new_docs)} new documents in vector DB."
+                        )
+                    else:
+                        self.search_context.append(
+                            "All documents already exist in vector DB."
+                        )
+                except Exception as add_error:
+                    console.print(f"[yellow]ChromaDB add operation failed: {add_error}[/yellow]")
 
         except Exception as e:
-            console.print(f"[yellow]Error storing documents in ChromaDB: {e}[/]")
-            self.search_context.append(f"Error storing documents in ChromaDB: {e}")
+            console.print(f"[yellow]Error storing documents in ChromaDB: {e}[/yellow]")
+            self.search_context.append(f"ChromaDB storage skipped due to: {e}")

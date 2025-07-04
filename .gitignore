@@ -2,3 +2,5 @@
 sessions
 __pycache__
 venv
+enrichment_results.json
+__pycache__/

@@ -15,7 +15,7 @@ class KeywordExtractor:
 
     def extract_keywords(self, query: str) -> Tuple[List[str], List[str]]:
         """
-        Extract keywords and entities from a query
+        Extract keywords and entities from a query with reasoning
 
         Args:
             query: User query
@@ -23,13 +23,31 @@ class KeywordExtractor:
         Returns:
             Tuple of (keywords, entities)
         """
+        # Reasoning step: Analyze query intent and structure
+        query_lower = query.lower().strip()
+        
         # Extract domain from the query if present
         domain_match = re.search(
             r"(?:https?://)?(?:www\.)?([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", query
         )
         domain = domain_match.group(1) if domain_match else None
 
-        # Simple keyword extraction
+        # Reasoning: Determine if this is a company enrichment query
+        contact_indicators = ['contact', 'email', 'phone', 'social', 'linkedin', 'facebook', 
+                            'twitter', 'instagram', 'whatsapp', 'about', 'team', 'staff']
+        is_contact_query = any(indicator in query_lower for indicator in contact_indicators)
+        
+        # Reasoning: Determine if this is about finding people/decision makers
+        people_indicators = ['ceo', 'founder', 'director', 'manager', 'leadership', 'team', 
+                           'decision maker', 'executive', 'president', 'owner']
+        is_people_query = any(indicator in query_lower for indicator in people_indicators)
+        
+        # Reasoning: Determine if this is about social media specifically
+        social_indicators = ['social media', 'linkedin', 'facebook', 'twitter', 'instagram', 
+                           'youtube', 'tiktok', 'social', 'profiles']
+        is_social_query = any(indicator in query_lower for indicator in social_indicators)
+
+        # Initialize keyword and entity lists
         keywords = []
         entities = []
 
@@ -37,6 +55,11 @@ class KeywordExtractor:
         if domain:
             keywords.append(domain)
             entities.append(domain)
+            # Extract company name from domain for better searching
+            company_name = domain.split('.')[0]
+            if company_name != domain:
+                keywords.append(company_name)
+                entities.append(company_name)
 
         # Enhanced keyword extraction for contact information
         contact_keywords = [

@@ -108,8 +108,11 @@ class ContactExtractor:
         contacts = {
             'emails': set(),
             'phones': set(),
+            'whatsapp_numbers': set(),
             'social_media': {},
-            'people': set()
+            'people': set(),
+            'mailto_links': set(),
+            'tel_links': set()
         }
 
         with Progress() as progress:
@@ -119,20 +122,79 @@ class ContactExtractor:
                 if not content:
                     continue
 
+                # Extract emails
                 contacts['emails'].update(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', content))
-                contacts['phones'].update(re.findall(r'\+?\d{1,3}?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', content))
                 
-                # Social media
+                # Extract phone numbers (enhanced pattern)
+                phone_patterns = [
+                    r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',  # Standard US format
+                    r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',  # US format without country code
+                    r'\+\d{1,3}[-.\s]?\d{4,14}',  # International format
+                    r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}'  # Simple 10-digit format
+                ]
+                for pattern in phone_patterns:
+                    contacts['phones'].update(re.findall(pattern, content))
+                
+                # Extract mailto links
+                mailto_matches = re.findall(r'mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', content, re.IGNORECASE)
+                contacts['mailto_links'].update(mailto_matches)
+                
+                # Extract tel links
+                tel_matches = re.findall(r'tel:([\+\d\s\-\(\)]+)', content, re.IGNORECASE)
+                contacts['tel_links'].update(tel_matches)
+                
+                # Extract WhatsApp numbers from various sources
+                whatsapp_patterns = [
+                    r'wa\.me/([\d+]+)',  # wa.me links
+                    r'whatsapp\.com/send\?phone=([\d+]+)',  # WhatsApp web links
+                    r'api\.whatsapp\.com/send\?phone=([\d+]+)',  # API links
+                    r'chat\.whatsapp\.com/([\w\d+]+)',  # Group links (different format)
+                ]
+                for pattern in whatsapp_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    contacts['whatsapp_numbers'].update(matches)
+                
+                # Look for WhatsApp in widgets/embedded content
+                if 'whatsapp' in content.lower():
+                    # Extract any phone numbers near WhatsApp mentions
+                    whatsapp_context = re.findall(r'whatsapp[^\n]*([\+\d\s\-\(\)]{7,})', content, re.IGNORECASE)
+                    contacts['whatsapp_numbers'].update(whatsapp_context)
+                
+                # Enhanced social media patterns
                 sm_patterns = {
-                    'linkedin': r'linkedin\.com/in/[\w-]+',
-                    'twitter': r'twitter\.com/[\w]+',
-                    'facebook': r'facebook\.com/[\w.]+'
+                    'linkedin': [
+                        r'linkedin\.com/in/[\w-]+',
+                        r'linkedin\.com/company/[\w-]+',
+                        r'linkedin\.com/pub/[\w-]+'
+                    ],
+                    'twitter': [
+                        r'twitter\.com/[\w]+',
+                        r'x\.com/[\w]+'
+                    ],
+                    'facebook': [
+                        r'facebook\.com/[\w.]+',
+                        r'fb\.com/[\w.]+'
+                    ],
+                    'instagram': [
+                        r'instagram\.com/[\w.]+',
+                        r'instagr\.am/[\w.]+'
+                    ],
+                    'youtube': [
+                        r'youtube\.com/c/[\w-]+',
+                        r'youtube\.com/channel/[\w-]+',
+                        r'youtube\.com/user/[\w-]+',
+                        r'youtu\.be/[\w-]+'
+                    ],
+                    'tiktok': [
+                        r'tiktok\.com/@[\w.]+'
+                    ],
                 }
-                for platform, pattern in sm_patterns.items():
-                    found = re.findall(pattern, content)
-                    if found:
-                        if platform not in contacts['social_media']:
-                            contacts['social_media'][platform] = set()
+                
+                for platform, patterns in sm_patterns.items():
+                    if platform not in contacts['social_media']:
+                        contacts['social_media'][platform] = set()
+                    for pattern in patterns:
+                        found = re.findall(pattern, content, re.IGNORECASE)
                         contacts['social_media'][platform].update(found)
 
                 progress.update(task, advance=1)
@@ -140,6 +202,9 @@ class ContactExtractor:
         # Convert sets to lists for JSON serialization
         contacts['emails'] = list(contacts['emails'])
         contacts['phones'] = list(contacts['phones'])
+        contacts['whatsapp_numbers'] = list(contacts['whatsapp_numbers'])
+        contacts['mailto_links'] = list(contacts['mailto_links'])
+        contacts['tel_links'] = list(contacts['tel_links'])
         for platform in contacts['social_media']:
             contacts['social_media'][platform] = list(contacts['social_media'][platform])
 
@@ -175,12 +240,25 @@ class ContactExtractor:
         ]
 
         try:
-            response = g4f.ChatCompletion.create(
-                model=self.g4f_model,
-                messages=messages,
-                timeout=self.ai_summary_timeout,
+            # Use local API for summary generation
+            import requests
+            
+            api_base = os.getenv("LOCAL_API_BASE", "http://localhost:8080/v1")
+            model = os.getenv("G4F_MODEL", "llama-4-scout")
+            
+            response = requests.post(
+                f"{api_base}/chat/completions",
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                },
+                timeout=self.ai_summary_timeout
             )
-            return str(response)
+            response.raise_for_status()
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
         except Exception as e:
             log.error(f"AI summary generation failed: {e}")
             return "AI summary could not be generated due to an error."
