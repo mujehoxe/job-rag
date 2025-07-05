@@ -6,3 +6,4 @@ enrichment_results.json
 __pycache__/
 __pycache__/.*
 contact_api/.*
+evaluation/results/

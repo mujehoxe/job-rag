@@ -25,6 +25,7 @@ class KeywordExtractor:
         """
         # Reasoning step: Analyze query intent and structure
         query_lower = query.lower().strip()
+        original_query = query.strip()
         
         # Extract domain from the query if present
         domain_match = re.search(
@@ -51,15 +52,61 @@ class KeywordExtractor:
         keywords = []
         entities = []
 
+        # CRITICAL FIX: Extract company names from query patterns
+        # Pattern: "Find contact information for [COMPANY]"
+        # Pattern: "Find contact information and social media for [COMPANY]"
+        company_patterns = [
+            r"find\s+contact\s+information\s+(?:and\s+\w+\s+)*for\s+(.+?)(?:\s+(?:payment|communication|data|real\s+estate|monitoring|platform|processor|api|service).*)?$",
+            r"find\s+.*?\s+for\s+(.+?)(?:\s+(?:payment|communication|data|real\s+estate|monitoring|platform|processor|api|service).*)?$",
+            r"(?:get|find|locate|search)\s+.*?\s+(?:for|about|of)\s+(.+?)(?:\s+(?:company|corporation|inc|llc|ltd).*)?$"
+        ]
+        
+        company_name = None
+        for pattern in company_patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                potential_company = match.group(1).strip()
+                # Clean up the company name
+                potential_company = re.sub(r'\s+(?:payment|communication|data|real\s+estate|monitoring|platform|processor|api|service|company|corporation|inc|llc|ltd).*$', '', potential_company)
+                potential_company = potential_company.strip()
+                if potential_company and len(potential_company) > 1:
+                    company_name = potential_company
+                    break
+        
+        # If no pattern match, try to extract company name from common word positions
+        if not company_name:
+            words = original_query.split()
+            # Look for company name after "for" or at the end
+            for i, word in enumerate(words):
+                if word.lower() == 'for' and i + 1 < len(words):
+                    # Take words after "for" until we hit a descriptor
+                    company_words = []
+                    for j in range(i + 1, len(words)):
+                        if words[j].lower() in ['payment', 'communication', 'data', 'real', 'estate', 'monitoring', 'platform', 'processor', 'api', 'service', 'company', 'corporation']:
+                            break
+                        company_words.append(words[j])
+                    if company_words:
+                        company_name = ' '.join(company_words)
+                        break
+
+        # Add company name as primary entity
+        if company_name:
+            entities.append(company_name)
+            keywords.append(company_name)
+            # Also add individual words of company name
+            for word in company_name.split():
+                if len(word) > 2:
+                    keywords.append(word)
+
         # Add domain as a keyword and entity if found
         if domain:
             keywords.append(domain)
             entities.append(domain)
             # Extract company name from domain for better searching
-            company_name = domain.split('.')[0]
-            if company_name != domain:
-                keywords.append(company_name)
-                entities.append(company_name)
+            domain_company = domain.split('.')[0]
+            if domain_company != domain and domain_company not in keywords:
+                keywords.append(domain_company)
+                entities.append(domain_company)
 
         # Enhanced keyword extraction for contact information
         contact_keywords = [
@@ -122,36 +169,28 @@ class KeywordExtractor:
         if "instagram" in query_lower:
             keywords.append("Instagram")
 
-        # Add general keywords from the query
+        # Add contact-specific keywords if this is a contact query
+        if is_contact_query:
+            contact_terms = ["contact", "email", "phone", "social", "media", "linkedin", "about"]
+            for term in contact_terms:
+                if term in query_lower and term not in keywords:
+                    keywords.append(term)
+        
+        # Add other meaningful keywords from the query (excluding common stop words and action verbs)
+        stop_words = {
+            "give", "find", "what", "where", "when", "about", "from", "with", 
+            "can", "get", "all", "and", "the", "for", "any", "you", "your", 
+            "this", "that", "these", "those", "them", "they", "their", "there",
+            "information", "data", "details", "please", "help", "need", "want",
+            "show", "tell", "have", "has", "will", "would", "could", "should"
+        }
+        
         query_words = query_lower.split()
         for word in query_words:
-            if len(word) > 3 and word not in [
-                "give",
-                "find",
-                "what",
-                "where",
-                "when",
-                "about",
-                "from",
-                "with",
-                "can",
-                "get",
-                "all",
-                "and",
-                "the",
-                "for",
-                "any",
-                "you",
-                "your",
-                "this",
-                "that",
-                "these",
-                "those",
-                "them",
-                "they",
-                "their",
-                "there",
-            ]:
+            if (len(word) > 3 and 
+                word not in stop_words and 
+                word not in keywords and
+                not word.isdigit()):
                 keywords.append(word)
 
         # Remove duplicates

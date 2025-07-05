@@ -21,7 +21,7 @@ from api_key_manager import APIKeyManager
 
 # Default configuration
 # Increased max rounds to allow for deeper business intelligence investigation
-MAX_SEARCH_ROUNDS = int(os.getenv("MAX_SEARCH_ROUNDS", "8"))  # High enough for thorough investigation
+MAX_SEARCH_ROUNDS = int(os.getenv("MAX_SEARCH_ROUNDS", "5"))  # Reduced for faster evaluation while still being thorough
 MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "15"))  # Increased for more comprehensive results
 SEARCH_TIMEOUT = int(os.getenv("SEARCH_TIMEOUT", "20"))  # Longer timeout for better content extraction
 MIN_RELEVANCE_SCORE = float(os.getenv("MIN_RELEVANCE_SCORE", "0.15"))  # Lower threshold for business intel
@@ -223,31 +223,34 @@ class StrategicSearch:
             # Generate specialized company enrichment queries
             main_entity = entities[0]  # Assume first entity is the company
             
+            # Add domain-specific searches first (highest priority)
+            potential_domains = [
+                f'{main_entity.lower().replace(" ", "")}.com',
+                f'{main_entity.lower().replace(" ", "")}.co',
+                f'{main_entity.lower().replace(" ", "")}.io'
+            ]
+            for domain in potential_domains:
+                queries.add(f'site:{domain} contact')
+                queries.add(f'site:{domain} about')
+            
+            # LinkedIn company page (most likely to have good contact info)
+            queries.add(f'site:linkedin.com/company "{main_entity}"')
+            queries.add(f'site:linkedin.com "{main_entity}"')
+            
             # Start with broader, more likely to succeed queries
             queries.add(f'{main_entity}')  # Simple company name search
-            queries.add(f'{main_entity} contact')
-            queries.add(f'{main_entity} about')
+            queries.add(f'"{main_entity}" contact information')
+            queries.add(f'"{main_entity}" phone email')
             
             # External social media searches (focus on finding profiles on other platforms)
-            queries.add(f'site:linkedin.com "{main_entity}"')
-            queries.add(f'site:facebook.com "{main_entity}"')
             queries.add(f'site:twitter.com "{main_entity}"')
+            queries.add(f'site:facebook.com "{main_entity}"')
             queries.add(f'site:instagram.com "{main_entity}"')
             
-            # Business directory searches
-            queries.add(f'site:yellowpages.com "{main_entity}"')
-            queries.add(f'site:yelp.com "{main_entity}"')
-            queries.add(f'site:bbb.org "{main_entity}"')
-            
-            # Contact information searches
-            queries.add(f'"{main_entity}" phone number')
-            queries.add(f'"{main_entity}" email')
-            queries.add(f'"{main_entity}" contact information')
-            
-            # Leadership searches
-            queries.add(f'"{main_entity}" CEO')
-            queries.add(f'"{main_entity}" founder')
-            queries.add(f'"{main_entity}" management team')
+            # Leadership searches (valuable for contact info)
+            queries.add(f'"{main_entity}" CEO founder')
+            queries.add(f'"{main_entity}" leadership team')
+            queries.add(f'"{main_entity}" management contact')
         else:
             # Standard query generation
             queries.add(" ".join(combined))
@@ -348,7 +351,7 @@ Focus ONLY on the company mentioned in the original query. Do NOT search for gen
             api_base = os.getenv("LOCAL_API_BASE", "http://localhost:8080/v1")
             model = os.getenv("G4F_MODEL", "llama-4-scout")
             
-            # Direct use of the local g4f API
+            # Direct use of the local g4f API with reduced timeout
             response = requests.post(
                 f"{api_base}/chat/completions",
                 json={
@@ -357,7 +360,7 @@ Focus ONLY on the company mentioned in the original query. Do NOT search for gen
                     "temperature": 0.7,
                     "max_tokens": 1500
                 },
-                timeout=20  # Reasonable timeout for g4f
+                timeout=10  # Reduced timeout to prevent hanging
             )
             response.raise_for_status()
             result = response.json()
@@ -411,12 +414,11 @@ Focus ONLY on the company mentioned in the original query. Do NOT search for gen
             
         except requests.exceptions.RequestException as e:
             console.print(f"[red]g4f API request failed: {e}[/red]")
-            # Return a minimal valid response to continue the search
-            return {
-                "thinking_process": "API request failed",
-                "sufficient": False,
-                "new_queries": [f"{query.split()[0] if query.split() else 'company'} contact"]
-            }
+            # Extract company name from the original query better
+            company_name = self._extract_company_name_from_query(query)
+            
+            # Use rule-based analysis as fallback
+            return self._rule_based_analysis(company_name, found_info, round_num, query)
             
         except json.JSONDecodeError as e:
             console.print(f"[red]JSON parsing failed: {e}[/red]")
@@ -852,3 +854,118 @@ Focus ONLY on the company mentioned in the original query. Do NOT search for gen
         except Exception as e:
             console.print(f"[dim red]Quick extraction error: {e}[/dim red]")
             return ""
+    
+    def _extract_company_name_from_query(self, query: str) -> str:
+        """Extract company name from query using the same logic as keyword extractor"""
+        import re
+        
+        query_lower = query.lower().strip()
+        
+        # Pattern: "Find contact information for [COMPANY]"
+        company_patterns = [
+            r"find\s+contact\s+information\s+(?:and\s+\w+\s+)*for\s+(.+?)(?:\s+(?:payment|communication|data|real\s+estate|monitoring|platform|processor|api|service).*)?$",
+            r"find\s+.*?\s+for\s+(.+?)(?:\s+(?:payment|communication|data|real\s+estate|monitoring|platform|processor|api|service).*)?$",
+            r"(?:get|find|locate|search)\s+.*?\s+(?:for|about|of)\s+(.+?)(?:\s+(?:company|corporation|inc|llc|ltd).*)?$"
+        ]
+        
+        for pattern in company_patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                potential_company = match.group(1).strip()
+                # Clean up the company name
+                potential_company = re.sub(r'\s+(?:payment|communication|data|real\s+estate|monitoring|platform|processor|api|service|company|corporation|inc|llc|ltd).*$', '', potential_company)
+                potential_company = potential_company.strip()
+                if potential_company and len(potential_company) > 1:
+                    return potential_company
+        
+        # Fallback: look for company name after "for"
+        words = query.split()
+        for i, word in enumerate(words):
+            if word.lower() == 'for' and i + 1 < len(words):
+                company_words = []
+                for j in range(i + 1, len(words)):
+                    if words[j].lower() in ['payment', 'communication', 'data', 'real', 'estate', 'monitoring', 'platform', 'processor', 'api', 'service', 'company', 'corporation']:
+                        break
+                    company_words.append(words[j])
+                if company_words:
+                    return ' '.join(company_words)
+        
+        return query.split()[0] if query.split() else "company"
+    
+    def _rule_based_analysis(self, company_name: str, found_info: str, round_num: int, query: str) -> Dict:
+        """Rule-based analysis as fallback when AI analysis fails"""
+        
+        # Check what we have found
+        has_phone = "✅ Phone numbers:" in found_info and "Not found" not in found_info.split("Phone numbers:")[1].split("\n")[0]
+        has_email = "✅ Email addresses:" in found_info and "Not found" not in found_info.split("Email addresses:")[1].split("\n")[0]
+        has_linkedin = "✅ LinkedIn profiles:" in found_info and "Not found" not in found_info.split("LinkedIn profiles:")[1].split("\n")[0]
+        has_social = "✅ Social media:" in found_info and "Not found" not in found_info.split("Social media:")[1].split("\n")[0]
+        has_website = "✅ Company website:" in found_info and "Not found" not in found_info.split("Company website:")[1].split("\n")[0]
+        
+        # Determine if we have sufficient information
+        sufficient = has_email and (has_phone or has_linkedin) and has_social
+        
+        # Generate new queries based on what's missing and round number
+        new_queries = []
+        
+        if round_num <= 2:
+            # Early rounds: Focus on main company presence
+            if not has_website:
+                new_queries.append(f'site:{company_name.lower().replace(" ", "")}.com')
+                new_queries.append(f'"{company_name}" official website')
+            if not has_linkedin:
+                new_queries.append(f'site:linkedin.com/company "{company_name}"')
+                
+        elif round_num <= 4:
+            # Mid rounds: Focus on missing contact info
+            if not has_email:
+                new_queries.append(f'"{company_name}" contact email')
+                new_queries.append(f'"{company_name}" support email')
+            if not has_phone:
+                new_queries.append(f'"{company_name}" phone number contact')
+                new_queries.append(f'"{company_name}" customer service phone')
+                
+        elif round_num <= 6:
+            # Later rounds: Social media and broader searches
+            if not has_social:
+                new_queries.append(f'site:twitter.com "{company_name}"')
+                new_queries.append(f'site:facebook.com "{company_name}"')
+            new_queries.append(f'"{company_name}" headquarters address')
+            
+        else:
+            # Final rounds: Exhaustive searches
+            new_queries.extend([
+                f'site:instagram.com "{company_name}"',
+                f'site:youtube.com "{company_name}"',
+                f'"{company_name}" leadership team contact'
+            ])
+        
+        # Ensure we always have at least 3 queries
+        while len(new_queries) < 3:
+            if round_num % 2 == 0:
+                new_queries.append(f'"{company_name}" about contact')
+            else:
+                new_queries.append(f'"{company_name}" business information')
+        
+        thinking = f"Round {round_num}: Missing " + ", ".join([
+            "phone" if not has_phone else "",
+            "email" if not has_email else "",
+            "LinkedIn" if not has_linkedin else "",
+            "social media" if not has_social else ""
+        ]).strip(", ")
+        
+        console.print(f"╭─────────── 🤖 Round {round_num} Analysis (Rule-Based) ────────────╮")
+        console.print(f"│ [bold]Status:[/bold] {thinking}")
+        console.print(f"│ [bold]Sufficient:[/bold] {sufficient}")
+        console.print(f"│ [bold]Next Queries:[/bold]")
+        for i, query in enumerate(new_queries[:3], 1):
+            console.print(f"│   {i}. {query}")
+        console.print("╰────────────────────────────────────────────────────────────────╯")
+        
+        return {
+            "thinking_process": thinking,
+            "company_industry": "unknown",
+            "company_location": "unknown", 
+            "sufficient": sufficient,
+            "new_queries": new_queries[:3]
+        }
